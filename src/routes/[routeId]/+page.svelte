@@ -115,7 +115,7 @@
 
   .split {
     display: flex;
-    height: 100vh;
+    height: 100%;
 
     .left {
       width: 500px;
@@ -130,17 +130,17 @@
 
     @media (max-width: 768px) {
       flex-direction: column-reverse;
-      height: auto;
+      height: 100%;
 
       .left {
         width: 100%;
         border-right: none;
         border-top: 1px solid #ccc;
-        height: 50vh;
+        height: 100%;
       }
 
       .right {
-        height: 50vh;
+        height: 100%;
       }
     }
   }
