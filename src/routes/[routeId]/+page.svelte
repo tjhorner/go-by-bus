@@ -45,7 +45,7 @@
 
     <div class="pois">
       {#await data.pois}
-        <p class="loading">Looking for excuses...</p>
+        <p class="loading"><em>Loading points of interest...</em></p>
       {:then pois}
         <PoiList {pois} onSelected={selectPoi} {selectedPoiId} />
       {:catch error}
@@ -153,7 +153,7 @@
       }
 
       .right {
-        height: 100%;
+        height: 75%;
       }
     }
   }
@@ -183,6 +183,7 @@
     font-size: 1.2em;
     color: #666;
     padding: 1em;
+    text-align: center;
   }
 
   .back-link {

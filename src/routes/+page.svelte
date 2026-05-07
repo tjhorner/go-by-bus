@@ -18,7 +18,9 @@
 
     <p>Pick a route below and we'll show you some interesting places you can get to from it.</p>
 
-    {#await data.routes then routes}
+    {#await data.routes}
+      <p class="center"><em>Just a sec, loading routes...</em></p>
+    {:then routes}
       <TypeaheadSearch
         {routes}
         {disabled}
@@ -27,6 +29,8 @@
           goto(`/${route.id}`)
         }}
       />
+    {:catch error}
+      <p class="center"><strong>Failed to load routes: {error.message}</strong></p>
     {/await}
 
     <h2>How does this work?</h2>
@@ -68,5 +72,9 @@
     width: 100%;
     max-width: 700px;
     padding: 0 1em;
+  }
+
+  .center {
+    text-align: center;
   }
 </style>
