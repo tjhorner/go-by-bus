@@ -34,6 +34,7 @@
   let container: HTMLDivElement | null = $state(null)
   let query = $state("")
   let selectedIndex = $state(0)
+  let focused = $state(false)
 
   let results = $derived.by(() => {
     if (!query) {
@@ -83,13 +84,15 @@
 <div class="typeahead" bind:this={container}>
   <input
     {disabled}
+    onfocus={() => (focused = true)}
+    onblur={() => (focused = false)}
     type="text"
-    placeholder="Search for a route..."
+    placeholder="Search Seattle-area transit routes..."
     bind:value={query}
     onkeydown={onKeyDown}
   />
 
-  {#if results.length > 0 && !disabled}
+  {#if focused && results.length > 0 && !disabled}
     <div class="results">
       {#each results as route, index}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -97,7 +100,7 @@
           role="link"
           class="result"
           class:active={index === selectedIndex}
-          onclick={() => selectRoute(route)}
+          onmousedown={() => selectRoute(route)}
           onmouseover={() => (selectedIndex = index)}
           onfocus={() => (selectedIndex = index)}
           tabindex="-1"

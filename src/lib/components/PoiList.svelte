@@ -45,8 +45,17 @@
   function scrollToPoi(id: string) {
     const element = poiListContainer?.querySelector(`#poi-${id}`)
     if (element) {
+      const detailsEl = element.closest("details")
+      if (detailsEl && detailsEl instanceof HTMLDetailsElement && !detailsEl.open) {
+        detailsEl.open = true
+      }
+
       element.scrollIntoView({ behavior: "smooth", block: "center" })
     }
+  }
+
+  function capitalizeFirstLetter(str: string) {
+    return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
   $effect(() => {
@@ -60,14 +69,14 @@
   {#each Object.entries(groupedByCategory) as [category, { features }]}
     {@const Icon = poiCategoryIcons[category as PoiCategory] || MapPin}
     {#if features.length > 0}
-      <details open>
+      <details>
         <summary
           class="category-heading"
           style={`background-color: ${poiCategoryColors[category as PoiCategory]}`}
-          aria-label={`${category} (${features.length} items)`}
+          aria-label={`${category} (${features.length} places)`}
           ><span class="label">
             <Icon size={16} />
-            {category} &bull; {features.length} items
+            {capitalizeFirstLetter(category)} &middot; {features.length} places
           </span></summary
         >
 
@@ -90,7 +99,6 @@
 
 <style>
   .category-heading {
-    text-transform: capitalize;
     padding: 0.5em;
     cursor: pointer;
     font-weight: bold;

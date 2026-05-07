@@ -34,13 +34,24 @@
 
 <div class="split">
   <div class="left">
-    {#await data.pois}
-      <p class="loading">Looking for excuses...</p>
-    {:then pois}
-      <PoiList {pois} onSelected={selectPoi} {selectedPoiId} />
-    {:catch error}
-      <p>Error loading points of interest: {error.message}</p>
-    {/await}
+    <div class="details">
+      <h3>Stuff near route {data.routeDetails.shortName}</h3>
+
+      <p>
+        Here are some places you can reach by taking route {data.routeDetails.shortName}. Browse
+        around on the map or expand a category below to find something interesting!
+      </p>
+    </div>
+
+    <div class="pois">
+      {#await data.pois}
+        <p class="loading">Looking for excuses...</p>
+      {:then pois}
+        <PoiList {pois} onSelected={selectPoi} {selectedPoiId} />
+      {:catch error}
+        <p>Error loading points of interest: {error.message}</p>
+      {/await}
+    </div>
   </div>
   <div class="right">
     <a href="/" class="back-link"> &larr; Try a different route </a>
@@ -121,6 +132,8 @@
       width: 500px;
       border-right: 1px solid #ccc;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .right {
@@ -143,6 +156,27 @@
         height: 100%;
       }
     }
+  }
+
+  .details {
+    padding: 0.75em;
+    border-bottom: 1px solid #ccc;
+
+    h3 {
+      margin: 0;
+    }
+
+    p {
+      margin: 0.25em 0;
+    }
+
+    p:last-of-type {
+      margin-bottom: 0;
+    }
+  }
+
+  .pois {
+    overflow-y: auto;
   }
 
   .loading {

@@ -8,25 +8,51 @@
 </script>
 
 <div class="container">
-  <h1>Go By Bus</h1>
+  <div class="details">
+    <h1>Go By Bus</h1>
 
-  <p>Find me an excuse to take...</p>
+    <p>
+      Are you the type of person that wants to ride a new bus route just for the sake of it? Or
+      maybe you live near a route and you're not sure where it goes?
+    </p>
 
-  {#await data.routes then routes}
-    <TypeaheadSearch
-      {routes}
-      {disabled}
-      onSelect={(route) => {
-        disabled = true
-        goto(`/${route.id}`)
-      }}
-    />
-  {/await}
+    <p>Pick a route below and we'll show you some interesting places you can get to from it.</p>
+
+    {#await data.routes then routes}
+      <TypeaheadSearch
+        {routes}
+        {disabled}
+        onSelect={(route) => {
+          disabled = true
+          goto(`/${route.id}`)
+        }}
+      />
+    {/await}
+
+    <h2>How does this work?</h2>
+
+    <p>
+      Route data is sourced from <a
+        href="https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Sound Transit's OneBusAway instance</a
+      >
+      and points of interest are sourced from
+      <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener noreferrer"
+        >OpenStreetMap</a
+      >. This project is open source on
+      <a href="https://github.com/tjhorner/go-by-bus" target="_blank" rel="noopener noreferrer"
+        >GitHub</a
+      >.
+    </p>
+  </div>
 </div>
 
 <style>
-  h1 {
-    margin: 0;
+  p {
+    line-height: 1.5;
   }
 
   .container {
@@ -36,6 +62,11 @@
     flex-direction: column;
     align-items: center;
     gap: 1em;
-    padding: 2em;
+  }
+
+  .details {
+    width: 100%;
+    max-width: 700px;
+    padding: 0 1em;
   }
 </style>
