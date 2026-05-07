@@ -36,6 +36,11 @@
     <h2>How does this work?</h2>
 
     <p>
+      When you select a route, this website will look up places to visit that are a quick walk or
+      roll from the stops along it.
+    </p>
+
+    <p>
       Route data is sourced from <a
         href="https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd"
         target="_blank"
