@@ -57,6 +57,7 @@
     padding: 0.25em;
     border-radius: 3px;
     cursor: pointer;
+    border: 2px solid white;
 
     &.selected {
       transform: scale(1.25);
