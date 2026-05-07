@@ -117,6 +117,7 @@
     position: relative;
     font-size: 1.2em;
     width: 700px;
+    max-width: 100%;
   }
 
   input {

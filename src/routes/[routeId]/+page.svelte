@@ -127,6 +127,22 @@
       flex-grow: 1;
       overflow-y: auto;
     }
+
+    @media (max-width: 768px) {
+      flex-direction: column-reverse;
+      height: auto;
+
+      .left {
+        width: 100%;
+        border-right: none;
+        border-top: 1px solid #ccc;
+        height: 50vh;
+      }
+
+      .right {
+        height: 50vh;
+      }
+    }
   }
 
   .loading {
