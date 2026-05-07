@@ -11,15 +11,6 @@ export enum PoiCategory {
   Other = "other",
 }
 
-export const poiCategoryColors: Record<PoiCategory, string> = {
-  [PoiCategory.Food]: "#ff6347",
-  [PoiCategory.Shopping]: "#1e90ff",
-  [PoiCategory.Entertainment]: "#ffa500",
-  [PoiCategory.Leisure]: "#32cd32",
-  [PoiCategory.Tourism]: "#ff69b4",
-  [PoiCategory.Other]: "#8a2be2",
-}
-
 export const poiCategoryIcons: Record<PoiCategory, Component> = {
   [PoiCategory.Food]: Utensils,
   [PoiCategory.Shopping]: Handbag,

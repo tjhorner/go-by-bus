@@ -136,11 +136,11 @@
     top: calc(100%);
     left: 0;
     max-height: 500px;
-    background: white;
-    color: #212121;
+    background: var(--color-bg);
+    color: var(--color-text);
     overflow: auto;
     text-align: left;
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 10px;
     margin-top: 10px;
     z-index: 5;
@@ -151,11 +151,11 @@
     cursor: pointer;
 
     &:not(:last-of-type) {
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--color-border-light);
     }
 
     &.active {
-      background-color: #eee;
+      background-color: var(--color-hover-bg);
     }
 
     .route-name {
@@ -165,7 +165,7 @@
     .agency-name {
       font-size: 0.8em;
       letter-spacing: 0.02em;
-      color: #666;
+      color: var(--color-text-secondary);
       margin-right: 0.5em;
     }
   }

@@ -1,7 +1,6 @@
 <script lang="ts">
   import {
     PoiCategory,
-    poiCategoryColors,
     poiCategoryIcons,
     type PointOfInterestProperties,
   } from "$lib/pois/index.svelte"
@@ -28,7 +27,7 @@
     <div
       class="marker"
       class:selected
-      style={`background-color: ${poiCategoryColors[feature.properties.category as PoiCategory]}`}
+      style={`background-color: var(--poi-color-${feature.properties.category})`}
     >
       <Icon size={16} />
     </div>
@@ -57,7 +56,7 @@
     padding: 0.25em;
     border-radius: 3px;
     cursor: pointer;
-    border: 2px solid white;
+    border: 2px solid var(--color-bg);
 
     &.selected {
       transform: scale(1.25);
@@ -70,7 +69,7 @@
 
   .muted {
     display: block;
-    color: #555;
+    color: var(--color-text-muted);
   }
 
   :global(.poi-marker-selected) {
@@ -81,6 +80,7 @@
     text-align: center;
     padding: 0.5em 0.75em;
     pointer-events: none;
+    background: var(--color-bg);
   }
 
   :global(.poi-hover-popup .maplibregl-popup-tip) {

@@ -6,10 +6,12 @@
   import type { Feature, Point } from "geojson"
   import type { PointOfInterestProperties } from "$lib/pois/index.svelte"
   import PoiMarkers from "$lib/components/PoiMarkers.svelte"
+  import { onMount } from "svelte"
 
   let { data }: PageProps = $props()
   let map: maplibregl.Map | undefined = $state()
   let selectedPoiId: string | null = $state(null)
+  let basemap: "positron" | "dark-matter" = $state("positron")
 
   function getBounds(): [[number, number], [number, number]] {
     const bbox = turf.bbox(turf.buffer(data.routeFeatures, 0.5, { units: "kilometers" })!)
@@ -30,6 +32,20 @@
       map.panTo([lng, lat], { zoom: 15, duration: 500 })
     }
   }
+
+  function darkModeSwitched(e: { matches: boolean }) {
+    if (e.matches) {
+      basemap = "dark-matter"
+    } else {
+      basemap = "positron"
+    }
+  }
+
+  onMount(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: dark)")
+    mql.onchange = darkModeSwitched
+    darkModeSwitched(mql)
+  })
 </script>
 
 <div class="split">
@@ -60,7 +76,7 @@
       bounds={getBounds()}
       class="map"
       standardControls
-      style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+      style="https://basemaps.cartocdn.com/gl/{basemap}-gl-style/style.json"
     >
       <GeoJSON data={data.routeFeatures}>
         <LineLayer
@@ -92,8 +108,8 @@
             "text-offset": [0, 2],
           }}
           paint={{
-            "text-color": "#222",
-            "text-halo-color": "#fff",
+            "text-color": basemap === "dark-matter" ? "#fff" : "#222",
+            "text-halo-color": basemap === "dark-matter" ? "#222" : "#fff",
             "text-halo-width": 2,
           }}
           minzoom={15}
@@ -130,7 +146,7 @@
 
     .left {
       width: 500px;
-      border-right: 1px solid #ccc;
+      border-right: 1px solid var(--color-border);
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -148,7 +164,7 @@
       .left {
         width: 100%;
         border-right: none;
-        border-top: 1px solid #ccc;
+        border-top: 1px solid var(--color-border);
         height: 100%;
       }
 
@@ -160,7 +176,7 @@
 
   .details {
     padding: 0.75em;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--color-border);
 
     h3 {
       margin: 0;
@@ -181,7 +197,7 @@
 
   .loading {
     font-size: 1.2em;
-    color: #666;
+    color: var(--color-text-secondary);
     padding: 1em;
     text-align: center;
   }
@@ -195,7 +211,7 @@
     padding: 0.5em 1em;
     border-radius: 5px;
     text-decoration: none;
-    color: #333;
+    color: var(--color-text);
     font-weight: bold;
   }
 </style>

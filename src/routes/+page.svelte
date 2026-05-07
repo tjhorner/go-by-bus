@@ -81,5 +81,6 @@
 
   .center {
     text-align: center;
+    color: var(--color-text-secondary);
   }
 </style>

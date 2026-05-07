@@ -77,13 +77,13 @@
 <style>
   .poi-details {
     padding: 0.5em;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     gap: 0.4em;
 
     &.selected {
-      background-color: #e0f7ff;
+      background-color: var(--color-highlight-bg);
     }
   }
 
@@ -94,7 +94,7 @@
 
   .muted {
     font-size: 0.875em;
-    color: #666;
+    color: var(--color-text-secondary);
     font-weight: normal;
   }
 
@@ -108,8 +108,8 @@
       align-items: center;
       gap: 0.25em;
       padding: 0.25em 0.5em;
-      background: #d1e7ff;
-      color: #004798;
+      background: var(--color-link-bg);
+      color: var(--color-link-text);
       border-radius: 9999px;
       text-decoration: none;
       font-size: 0.875em;

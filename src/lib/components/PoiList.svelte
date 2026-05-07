@@ -1,7 +1,6 @@
 <script lang="ts">
   import {
     PoiCategory,
-    poiCategoryColors,
     poiCategoryIcons,
     type PointOfInterestProperties,
   } from "$lib/pois/index.svelte"
@@ -72,7 +71,7 @@
       <details>
         <summary
           class="category-heading"
-          style={`background-color: ${poiCategoryColors[category as PoiCategory]}`}
+          style={`background-color: var(--poi-color-${category})`}
           aria-label={`${category} (${features.length} places)`}
           ><span class="label">
             <Icon size={16} />
