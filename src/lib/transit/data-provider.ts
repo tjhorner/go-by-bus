@@ -37,7 +37,10 @@ class OBADataProvider implements TransitDataProvider {
         if (init?.headers) {
           for (const key of Object.keys(init.headers)) {
             // these headers mess with CORS preflight requests
-            if (key.toLowerCase().startsWith("x-stainless-")) {
+            if (
+              key.toLowerCase().startsWith("x-stainless-") ||
+              key.toLowerCase() === "user-agent"
+            ) {
               // @ts-expect-error
               delete init.headers[key]
             }
