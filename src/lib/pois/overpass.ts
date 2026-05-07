@@ -146,26 +146,31 @@ export class OverpassPoiProvider implements PoiProvider {
     const convertedBbox = [bbox[1], bbox[0], bbox[3], bbox[2]] // convert from [minX, minY, maxX, maxY] to [south, west, north, east]
     const queryBody = `[out:json][timeout:60][bbox:${convertedBbox.join(",")}];${query};out center;`
 
+    const overpassHosts = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter",
+    ]
+
     const maxRetries = 3
     const baseDelay = 1000
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const response = await fetch("https://overpass-api.de/api/interpreter", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: `data=${encodeURIComponent(queryBody)}`,
-        })
+      for (const host of overpassHosts) {
+        try {
+          const response = await fetch(host, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: `data=${encodeURIComponent(queryBody)}`,
+          })
 
-        if (response.ok) {
-          const data: OverpassResponse = await response.json()
-          return data
-        }
-      } catch (error) {
-        if (attempt === maxRetries - 1) {
-          throw error
+          if (response.ok) {
+            const data: OverpassResponse = await response.json()
+            return data
+          }
+        } catch (error) {
+          // Try next host
         }
       }
 
