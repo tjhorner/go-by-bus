@@ -11,16 +11,12 @@ export interface Route {
   longName?: string
   color?: string
   textColor?: string
-}
-
-export interface AgencyWithRoutes {
-  id: string
-  name: string
-  routes: Route[]
+  agencyId?: string
+  agencyName?: string
 }
 
 export interface TransitDataProvider {
-  getRoutes(): Promise<AgencyWithRoutes[]>
+  getRoutes(): Promise<Route[]>
   getRoute(routeId: string): Promise<Route>
   getRouteFeatures(routeId: string): Promise<FeatureCollection>
 }
@@ -52,9 +48,9 @@ class OBADataProvider implements TransitDataProvider {
     })
   }
 
-  async getRoutes(): Promise<AgencyWithRoutes[]> {
+  async getRoutes(): Promise<Route[]> {
     const cacheKey = "routes"
-    const cached = await this.#cache.get<AgencyWithRoutes[]>(cacheKey)
+    const cached = await this.#cache.get<Route[]>(cacheKey)
     if (cached) {
       return cached
     }
@@ -66,45 +62,35 @@ class OBADataProvider implements TransitDataProvider {
     )
 
     const routes = await Promise.all(
-      agencies.data.list.map(async (agency) => ({
-        id: agency.agencyId,
-        name: agenciesById[agency.agencyId].name,
-        routes: await this.#client.routesForAgency.list(agency.agencyId).then((response) =>
-          orderBy(
-            response.data.list.map((route) => ({
+      agencies.data.list.map(async (agency) => {
+        const agencyName = agenciesById[agency.agencyId].name
+        return this.#client.routesForAgency.list(agency.agencyId).then((response) =>
+          response.data.list.map(
+            (route): Route => ({
               id: route.id,
               shortName: route.shortName,
               longName: firstNonEmptyString(route.longName, route.description) ?? "",
-            })),
-            [(route) => route.shortName ?? route.longName ?? route.id],
-            ["asc"]
+              agencyId: agency.agencyId,
+              agencyName,
+              color: route.color ? `#${route.color}` : undefined,
+              textColor: route.textColor ? `#${route.textColor}` : undefined,
+            })
           )
-        ),
-      }))
-    )
+        )
+      })
+    ).then((r) => r.flat())
 
     await this.#cache.set(cacheKey, routes)
     return routes
   }
 
   async getRoute(routeId: string): Promise<Route> {
-    const cacheKey = `route:${routeId}`
-    const cached = await this.#cache.get<Route>(cacheKey)
-    if (cached) {
-      return cached
+    const routes = await this.getRoutes()
+    const route = routes.find((r) => r.id === routeId)
+    if (!route) {
+      throw new Error(`Route not found: ${routeId}`)
     }
-
-    const route = await this.#client.route.retrieve(routeId).then((response) => response.data.entry)
-    const result: Route = {
-      id: route.id,
-      shortName: route.shortName,
-      longName: firstNonEmptyString(route.longName, route.description) ?? "",
-      color: route.color ? `#${route.color}` : undefined,
-      textColor: route.textColor ? `#${route.textColor}` : undefined,
-    }
-
-    await this.#cache.set(cacheKey, result)
-    return result
+    return route
   }
 
   async getRouteFeatures(routeId: string): Promise<FeatureCollection> {

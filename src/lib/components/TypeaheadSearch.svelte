@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { AgencyWithRoutes, Route } from "$lib/transit/data-provider"
+  import type { Route } from "$lib/transit/data-provider"
   import Fuse from "fuse.js"
 
   interface Props {
-    routes: AgencyWithRoutes[]
+    routes: Route[]
     disabled?: boolean
     onSelect?: (route: Route) => void
   }
@@ -15,13 +15,7 @@
   }
 
   let flatRoutes = $derived(
-    routes.flatMap((agency) =>
-      agency.routes.map((route) => ({
-        ...route,
-        displayName: formatDisplayName(route),
-        agencyName: agency.name,
-      }))
-    )
+    routes.map((route) => ({ ...route, displayName: formatDisplayName(route) }))
   )
 
   const searcher = $derived(
