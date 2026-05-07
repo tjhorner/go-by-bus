@@ -61,6 +61,13 @@ export class OverpassPoiProvider implements PoiProvider {
         nwr[amenity=cinema][name];
         nwr[leisure][name];
         nwr[shop][name];
+        nwr[tourism=museum][name];
+        nwr[tourism=attraction][name];
+        nwr[tourism=gallery][name];
+        nwr[tourism=theme_park][name];
+        nwr[tourism=zoo][name];
+        nwr[tourism=picnic_site][name];
+        nwr[tourism=viewpoint][name];
       )`,
       bbox
     )
@@ -106,6 +113,18 @@ export class OverpassPoiProvider implements PoiProvider {
   }
 
   private getCategory(tags: { [key: string]: string }): PoiCategory {
+    if (tags.leisure) {
+      return PoiCategory.Leisure
+    }
+
+    if (tags.shop) {
+      return PoiCategory.Shopping
+    }
+
+    if (tags.tourism) {
+      return PoiCategory.Tourism
+    }
+
     if (tags.amenity) {
       switch (tags.amenity) {
         case "restaurant":
@@ -118,14 +137,6 @@ export class OverpassPoiProvider implements PoiProvider {
         case "cinema":
           return PoiCategory.Entertainment
       }
-    }
-
-    if (tags.leisure) {
-      return PoiCategory.Leisure
-    }
-
-    if (tags.shop) {
-      return PoiCategory.Shopping
     }
 
     return PoiCategory.Other
