@@ -171,6 +171,7 @@ export class OverpassPoiProvider implements PoiProvider {
           }
         } catch (error) {
           // Try next host
+          console.warn(`Overpass API request failed on host ${host}:`, error)
         }
       }
 
