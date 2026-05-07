@@ -2,7 +2,6 @@ import type { Feature, FeatureCollection, Geometry, LineString } from "geojson"
 import OnebusawaySDK from "onebusaway-sdk"
 import polyline from "@mapbox/polyline"
 import * as turf from "@turf/turf"
-import { orderBy } from "natural-orderby"
 import { sessionStorageCache, type Cache } from "../cache"
 
 export interface Route {

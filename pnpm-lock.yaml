@@ -23,9 +23,6 @@ importers:
       fuse.js:
         specifier: ^7.3.0
         version: 7.3.0
-      natural-orderby:
-        specifier: ^5.0.0
-        version: 5.0.0
       onebusaway-sdk:
         specifier: ^1.10.12
         version: 1.10.12
@@ -1137,10 +1134,6 @@ packages:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
-
-  natural-orderby@5.0.0:
-    resolution: {integrity: sha512-kKHJhxwpR/Okycz4HhQKKlhWe4ASEfPgkSWNmKFHd7+ezuQlxkA5cM3+XkBPvm1gmHen3w53qsYAv+8GwRrBlg==}
-    engines: {node: '>=18'}
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -3263,8 +3256,6 @@ snapshots:
   murmurhash-js@1.0.0: {}
 
   nanoid@3.3.12: {}
-
-  natural-orderby@5.0.0: {}
 
   node-domexception@1.0.0: {}
 
