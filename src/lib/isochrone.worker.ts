@@ -1,11 +1,9 @@
 import { buildIsochroneGraph, computeIsochrone } from "./isochrone"
 import type { IsochroneOptions, BuiltIsochroneGraph } from "./isochrone"
 import { loadTilesForBbox } from "./tiles"
-import type { Feature, FeatureCollection, Point, Polygon, MultiPolygon } from "geojson"
+import type { Feature, FeatureCollection, Point, Polygon, MultiPolygon, Position } from "geojson"
 import type { PointOfInterestProperties } from "./pois/index.svelte"
 import * as turf from "@turf/turf"
-
-type LatLon = { lat: number; lon: number }
 
 export const WALKING_MINUTES_OPTIONS = [5, 10, 15, 20, 25, 30] as const
 export type WalkingMinutes = (typeof WALKING_MINUTES_OPTIONS)[number]
@@ -14,7 +12,7 @@ export type BuildMessage = {
   type: "build"
   bbox: [number, number, number, number]
   tilesBaseUrl: string
-  origins: LatLon[]
+  origins: Position[]
   options?: IsochroneOptions
 }
 

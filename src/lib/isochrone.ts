@@ -1,11 +1,17 @@
 import * as turf from "@turf/turf"
-import type { Feature, FeatureCollection, LineString, Polygon, MultiPolygon } from "geojson"
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  Polygon,
+  MultiPolygon,
+  Position,
+} from "geojson"
 
 type NodeId = number
-type LatLon = { lat: number; lon: number }
 
 interface RoutingGraph {
-  nodes: Map<NodeId, LatLon>
+  nodes: Map<NodeId, Position>
   adjacency: Map<NodeId, Array<{ to: NodeId; seconds: number }>>
 }
 
@@ -58,15 +64,15 @@ class MinHeap<T> {
   }
 }
 
-function distanceMeters(a: LatLon, b: LatLon): number {
-  const cosLat = Math.cos(((a.lat + b.lat) * Math.PI) / 360)
-  const dx = (b.lon - a.lon) * cosLat * 111_319.5
-  const dy = (b.lat - a.lat) * 111_319.5
+function distanceMeters(a: Position, b: Position): number {
+  const cosLat = Math.cos(((a[1] + b[1]) * Math.PI) / 360)
+  const dx = (b[0] - a[0]) * cosLat * 111_319.5
+  const dy = (b[1] - a[1]) * 111_319.5
   return Math.sqrt(dx * dx + dy * dy)
 }
 
 function buildGraph(roads: FeatureCollection<LineString>): RoutingGraph {
-  const nodes = new Map<NodeId, LatLon>()
+  const nodes = new Map<NodeId, Position>()
   const adjacency = new Map<NodeId, Array<{ to: NodeId; seconds: number }>>()
   const coordToId = new Map<string, NodeId>()
   let nextId = 0
@@ -77,7 +83,7 @@ function buildGraph(roads: FeatureCollection<LineString>): RoutingGraph {
     if (id === undefined) {
       id = nextId++
       coordToId.set(key, id)
-      nodes.set(id, { lat, lon })
+      nodes.set(id, [lon, lat])
     }
     return id
   }
@@ -91,13 +97,11 @@ function buildGraph(roads: FeatureCollection<LineString>): RoutingGraph {
   for (const feature of roads.features) {
     const coords = feature.geometry.coordinates
     for (let i = 0; i < coords.length - 1; i++) {
-      const [fromLon, fromLat] = coords[i]
-      const [toLon, toLat] = coords[i + 1]
-      const fromId = getNodeId(fromLon, fromLat)
-      const toId = getNodeId(toLon, toLat)
-      const seconds =
-        distanceMeters({ lat: fromLat, lon: fromLon }, { lat: toLat, lon: toLon }) /
-        WALKING_SPEED_MPS
+      const from = coords[i]
+      const to = coords[i + 1]
+      const fromId = getNodeId(from[0], from[1])
+      const toId = getNodeId(to[0], to[1])
+      const seconds = distanceMeters(from, to) / WALKING_SPEED_MPS
       addEdge(fromId, toId, seconds)
       addEdge(toId, fromId, seconds)
     }
@@ -145,7 +149,7 @@ function buildSpatialGrid(
   const cells = new Map<string, NodeId[]>()
 
   for (const id of candidates) {
-    const { lat, lon } = graph.nodes.get(id)!
+    const [lon, lat] = graph.nodes.get(id)!
     const key = `${Math.floor(lon / cellSizeDeg)},${Math.floor(lat / cellSizeDeg)}`
     const cell = cells.get(key)
     if (cell) cell.push(id)
@@ -156,14 +160,14 @@ function buildSpatialGrid(
 }
 
 function snapToNearestNode(
-  origin: LatLon,
+  origin: Position,
   graph: RoutingGraph,
   grid: SpatialGrid,
   maxMeters: number
 ): NodeId | null {
   const { cells, cellSizeDeg } = grid
-  const cx = Math.floor(origin.lon / cellSizeDeg)
-  const cy = Math.floor(origin.lat / cellSizeDeg)
+  const cx = Math.floor(origin[0] / cellSizeDeg)
+  const cy = Math.floor(origin[1] / cellSizeDeg)
   // +1 to ensure we don't miss nodes just across a cell boundary
   const radius = Math.ceil(maxMeters / 111_319.5 / cellSizeDeg) + 1
 
@@ -223,7 +227,7 @@ function reachedNodesToPolygon(
   const seen = new Set<string>()
   const sampled: [number, number][] = []
   for (const id of reached.keys()) {
-    const { lat, lon } = graph.nodes.get(id)!
+    const [lon, lat] = graph.nodes.get(id)!
     const key = `${Math.floor(lon / cellSizeDeg)},${Math.floor(lat / cellSizeDeg)}`
     if (!seen.has(key)) {
       seen.add(key)
@@ -261,7 +265,7 @@ function clipRoadsToBbox(
 
 export function buildIsochroneGraph(
   roads: FeatureCollection<LineString>,
-  origins: LatLon[],
+  origins: Position[],
   bbox: [number, number, number, number],
   options: IsochroneOptions = {}
 ): BuiltIsochroneGraph {

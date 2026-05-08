@@ -89,10 +89,7 @@
       }
     }
 
-    const origins = data.stopFeatures.features.map((f) => ({
-      lat: f.geometry.coordinates[1],
-      lon: f.geometry.coordinates[0],
-    }))
+    const origins = data.stopFeatures.features.map((f) => f.geometry.coordinates)
     worker.postMessage({ type: "build", bbox: data.bbox, tilesBaseUrl: "/tiles", origins })
 
     const mql = window.matchMedia("(prefers-color-scheme: dark)")

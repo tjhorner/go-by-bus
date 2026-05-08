@@ -1,10 +1,8 @@
-import type { Feature, FeatureCollection, LineString } from "geojson"
-
-type Bbox = readonly [number, number, number, number] // [minLng, minLat, maxLng, maxLat]
+import type { BBox, Feature, FeatureCollection, LineString } from "geojson"
 
 export async function loadTilesForBbox(
   baseUrl: string,
-  bbox: Bbox,
+  bbox: BBox,
   zoom = 11
 ): Promise<FeatureCollection<LineString>> {
   const tiles = tilesCoveringBbox(bbox, zoom)
@@ -28,7 +26,7 @@ async function fetchTile(
 }
 
 function tilesCoveringBbox(
-  [minLng, minLat, maxLng, maxLat]: Bbox,
+  [minLng, minLat, maxLng, maxLat]: BBox,
   zoom: number
 ): [number, number, number][] {
   const lonLatToTile = (lng: number, lat: number): [number, number] => {
