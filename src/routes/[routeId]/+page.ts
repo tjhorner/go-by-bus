@@ -16,8 +16,7 @@ export const load: PageLoad = async ({ params }) => {
     routeFeatures.features.filter((f) => f.geometry.type === "Point") as Feature<Point>[]
   )
 
-  const bufferedStops = turf.union(turf.buffer(stopFeatures, 0.5, { units: "kilometers" })!)!
-
+  const bufferedStops = turf.union(turf.buffer(stopFeatures, 2, { units: "kilometers" })!)!
   const bbox = turf.bbox(bufferedStops)
 
   return {
@@ -25,6 +24,7 @@ export const load: PageLoad = async ({ params }) => {
     stopFeatures,
     routeFeatures,
     bufferedStops,
+    bbox: bbox as [number, number, number, number],
     pois: overpassPoiProvider.getPois(bbox).then(({ features }) =>
       turf.featureCollection(
         features
@@ -34,19 +34,10 @@ export const load: PageLoad = async ({ params }) => {
             const distanceFromNearestStop = turf.distance(feature, nearestStop, {
               units: "meters",
             })
-
             return {
               ...feature,
-              properties: {
-                ...feature.properties,
-                distanceFromNearestStop,
-              },
+              properties: { ...feature.properties, distanceFromNearestStop },
             }
-          })
-          .sort((a, b) => {
-            const distA = a.properties?.distanceFromNearestStop ?? Infinity
-            const distB = b.properties?.distanceFromNearestStop ?? Infinity
-            return distA - distB
           })
       )
     ),

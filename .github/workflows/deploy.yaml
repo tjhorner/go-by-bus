@@ -11,6 +11,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install Python dependencies
+        run: uv sync --locked --all-extras --dev
+
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -21,8 +32,11 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: pnpm install
+
+      - name: Build routing tiles
+        run: ./tools/build-graph.sh
 
       - name: build
         run: pnpm build

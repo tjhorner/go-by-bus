@@ -1,17 +1,52 @@
 <script lang="ts">
   import type { PageProps } from "./$types"
-  import { MapLibre, GeoJSON, LineLayer, CircleLayer, SymbolLayer } from "svelte-maplibre"
+  import {
+    MapLibre,
+    GeoJSON,
+    LineLayer,
+    CircleLayer,
+    SymbolLayer,
+    FillLayer,
+  } from "svelte-maplibre"
   import * as turf from "@turf/turf"
   import PoiList from "$lib/components/PoiList.svelte"
-  import type { Feature, Point } from "geojson"
+  import type { Feature, FeatureCollection, Point, Polygon, MultiPolygon } from "geojson"
   import type { PointOfInterestProperties } from "$lib/pois/index.svelte"
   import PoiMarkers from "$lib/components/PoiMarkers.svelte"
-  import { onMount } from "svelte"
+  import { onMount, onDestroy } from "svelte"
+  import type { WorkerOutMessage, WalkingMinutes, IsochroneMessage } from "$lib/isochrone.worker"
 
   let { data }: PageProps = $props()
   let map: maplibregl.Map | undefined = $state()
   let selectedPoiId: string | null = $state(null)
   let basemap: "positron" | "dark-matter" = $state("positron")
+  let rawPois: FeatureCollection<Point, PointOfInterestProperties> | null = $state(null)
+  let walkingMinutes: WalkingMinutes = $state(15)
+  let graphBuilt: boolean = $state(false)
+  let isochrone: IsochroneMessage["isochrone"] = $state(null)
+  let currentFilteredPois: IsochroneMessage["filteredPois"] = $state(null)
+  let worker: Worker | null = null
+
+  function sendCompute() {
+    worker?.postMessage({
+      type: "compute",
+      minutes: walkingMinutes,
+      features: rawPois ? $state.snapshot(rawPois.features) : null,
+    })
+  }
+
+  $effect(() => {
+    // reactively re-send compute when walkingMinutes changes
+    walkingMinutes
+    if (graphBuilt) sendCompute()
+  })
+
+  $effect(() => {
+    data.pois.then((pois) => {
+      rawPois = pois
+      if (graphBuilt) sendCompute()
+    })
+  })
 
   function getBounds(): [[number, number], [number, number]] {
     const bbox = turf.bbox(turf.buffer(data.routeFeatures, 0.5, { units: "kilometers" })!)
@@ -42,9 +77,31 @@
   }
 
   onMount(() => {
+    worker = new Worker(new URL("$lib/isochrone.worker.ts", import.meta.url), { type: "module" })
+    worker.onmessage = (e: MessageEvent<WorkerOutMessage>) => {
+      const msg = e.data
+      if (msg.type === "ready") {
+        graphBuilt = true
+        sendCompute()
+      } else if (msg.type === "isochrone") {
+        isochrone = msg.isochrone
+        if (msg.filteredPois !== null) currentFilteredPois = msg.filteredPois
+      }
+    }
+
+    const origins = data.stopFeatures.features.map((f) => ({
+      lat: f.geometry.coordinates[1],
+      lon: f.geometry.coordinates[0],
+    }))
+    worker.postMessage({ type: "build", bbox: data.bbox, tilesBaseUrl: "/tiles", origins })
+
     const mql = window.matchMedia("(prefers-color-scheme: dark)")
     mql.onchange = darkModeSwitched
     darkModeSwitched(mql)
+  })
+
+  onDestroy(() => {
+    worker?.terminate()
   })
 </script>
 
@@ -60,13 +117,11 @@
     </div>
 
     <div class="pois">
-      {#await data.pois}
+      {#if currentFilteredPois}
+        <PoiList pois={currentFilteredPois} onSelected={selectPoi} {selectedPoiId} />
+      {:else}
         <p class="loading"><em>Loading points of interest...</em></p>
-      {:then pois}
-        <PoiList {pois} onSelected={selectPoi} {selectedPoiId} />
-      {:catch error}
-        <p>Error loading points of interest: {error.message}</p>
-      {/await}
+      {/if}
     </div>
   </div>
   <div class="right">
@@ -87,6 +142,37 @@
           }}
         />
       </GeoJSON>
+
+      {#if isochrone}
+        <GeoJSON data={isochrone}>
+          <FillLayer
+            id="isochrone"
+            paint={{
+              "fill-color": "#6366f1",
+              "fill-opacity": 0.2,
+            }}
+          />
+        </GeoJSON>
+      {/if}
+
+      <div class="walking-time-control">
+        <label for="walking-time">
+          {#if graphBuilt}
+            {walkingMinutes} min walk
+          {:else}
+            Loading...
+          {/if}
+        </label>
+        <input
+          id="walking-time"
+          type="range"
+          min="5"
+          max="30"
+          step="5"
+          disabled={!graphBuilt}
+          bind:value={walkingMinutes}
+        />
+      </div>
 
       <GeoJSON data={data.stopFeatures}>
         <CircleLayer
@@ -116,20 +202,9 @@
         />
       </GeoJSON>
 
-      <GeoJSON data={data.bufferedStops!}>
-        <LineLayer
-          id="buffered-stops"
-          paint={{
-            "line-color": "#00ee00",
-            "line-dasharray": [2, 2],
-            "line-width": 2,
-          }}
-        />
-      </GeoJSON>
-
-      {#await data.pois then pois}
-        <PoiMarkers {pois} onclick={selectPoi} {selectedPoiId} />
-      {/await}
+      {#if currentFilteredPois}
+        <PoiMarkers pois={currentFilteredPois} onclick={selectPoi} {selectedPoiId} />
+      {/if}
     </MapLibre>
   </div>
 </div>
@@ -213,5 +288,40 @@
     text-decoration: none;
     color: var(--color-text);
     font-weight: bold;
+  }
+
+  .walking-time-control {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.5em 0.875em;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25em;
+    min-width: 160px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: initial;
+
+    label {
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
   }
 </style>

@@ -1,7 +1,7 @@
 import type { BBox, FeatureCollection, Point } from "geojson"
 import { PoiCategory, type PointOfInterestProperties, type PoiProvider } from "./index.svelte"
 import * as turf from "@turf/turf"
-import { sessionStorageCache, type Cache } from "../cache"
+import { indexedDBCache, type Cache } from "../cache"
 import { getPresetName } from "./id-presets"
 
 export interface OverpassResponse {
@@ -12,7 +12,7 @@ export interface OverpassResponse {
 
 export interface OverpassElementBase {
   id: number
-  tags: { [key: string]: string }
+  tags?: { [key: string]: string }
 }
 
 export type OverpassNode = OverpassElementBase & {
@@ -23,7 +23,7 @@ export type OverpassNode = OverpassElementBase & {
 
 export type OverpassWay = OverpassElementBase & {
   type: "way"
-  center: Center
+  center?: Center
   nodes: number[]
 }
 
@@ -34,23 +34,19 @@ export interface Center {
   lon: number
 }
 
-export class OverpassPoiProvider implements PoiProvider {
+export class OverpassClient {
   readonly #cache: Cache
 
   constructor(cache: Cache) {
     this.#cache = cache
   }
 
-  async getPois(bbox: BBox): Promise<FeatureCollection<Point, PointOfInterestProperties>> {
-    const cacheKey = `overpass:${bbox.join(",")}`
-    const cachedData =
-      await this.#cache.get<FeatureCollection<Point, PointOfInterestProperties>>(cacheKey)
+  async fetchPois(bbox: BBox): Promise<OverpassResponse> {
+    const cacheKey = `overpass:pois:${bbox.join(",")}`
+    const cached = await this.#cache.get<OverpassResponse>(cacheKey)
+    if (cached) return cached
 
-    if (cachedData) {
-      return cachedData
-    }
-
-    const overpassFeatures = await this.queryOverpass(
+    const result = await this.query(
       `(
         nwr[amenity=restaurant][name];
         nwr[amenity=cafe][name];
@@ -72,32 +68,84 @@ export class OverpassPoiProvider implements PoiProvider {
       bbox
     )
 
-    const features = overpassFeatures.elements.map((element) => {
-      const presetName = getPresetName(element.tags)
+    await this.#cache.set(cacheKey, result)
+    return result
+  }
 
+  private async query(
+    query: string,
+    bbox: BBox,
+    outputCmd = "out center;"
+  ): Promise<OverpassResponse> {
+    const convertedBbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
+    const queryBody = `[out:json][timeout:60][bbox:${convertedBbox.join(",")}];${query};${outputCmd}`
+
+    const overpassHosts = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter",
+    ]
+
+    const maxRetries = 3
+    const baseDelay = 1000
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      for (const host of overpassHosts) {
+        try {
+          const response = await fetch(host, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `data=${encodeURIComponent(queryBody)}`,
+          })
+
+          if (response.ok) {
+            return response.json() as Promise<OverpassResponse>
+          }
+        } catch (error) {
+          console.warn(`Overpass API request failed on host ${host}:`, error)
+        }
+      }
+
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
+    throw new Error("Failed to query Overpass API after retries")
+  }
+}
+
+export class OverpassPoiProvider implements PoiProvider {
+  readonly #client: OverpassClient
+
+  constructor(client: OverpassClient) {
+    this.#client = client
+  }
+
+  async getPois(bbox: BBox): Promise<FeatureCollection<Point, PointOfInterestProperties>> {
+    const response = await this.#client.fetchPois(bbox)
+
+    const features = response.elements.map((element) => {
+      const tags = element.tags!
       const properties: PointOfInterestProperties = {
-        name: element.tags.name!,
-        category: this.getCategory(element.tags),
-        subcategory: presetName,
-        description: element.tags.description,
-        address: this.getFullAddress(element.tags),
-        urls: Object.values(element.tags).filter((value) => value.startsWith("http")),
-        phone: element.tags.phone,
+        name: tags.name!,
+        category: this.getCategory(tags),
+        subcategory: getPresetName(tags),
+        description: tags.description,
+        address: this.getFullAddress(tags),
+        urls: Object.values(tags).filter((value) => value.startsWith("http")),
+        phone: tags.phone,
       }
 
       const coordinates =
         element.type === "node"
           ? [element.lon, element.lat]
-          : [element.center.lon, element.center.lat]
+          : [element.center!.lon, element.center!.lat]
 
-      return turf.point(coordinates, properties, {
-        id: element.id.toString(),
-      })
+      return turf.point(coordinates, properties, { id: element.id.toString() })
     })
 
-    const fc = turf.featureCollection(features)
-    await this.#cache.set(cacheKey, fc)
-    return fc
+    return turf.featureCollection(features)
   }
 
   private getFullAddress(tags: { [key: string]: string }): string | undefined {
@@ -113,17 +161,9 @@ export class OverpassPoiProvider implements PoiProvider {
   }
 
   private getCategory(tags: { [key: string]: string }): PoiCategory {
-    if (tags.leisure) {
-      return PoiCategory.Leisure
-    }
-
-    if (tags.shop) {
-      return PoiCategory.Shopping
-    }
-
-    if (tags.tourism) {
-      return PoiCategory.Tourism
-    }
+    if (tags.leisure) return PoiCategory.Leisure
+    if (tags.shop) return PoiCategory.Shopping
+    if (tags.tourism) return PoiCategory.Tourism
 
     if (tags.amenity) {
       switch (tags.amenity) {
@@ -141,48 +181,7 @@ export class OverpassPoiProvider implements PoiProvider {
 
     return PoiCategory.Other
   }
-
-  private async queryOverpass(query: string, bbox: BBox): Promise<OverpassResponse> {
-    const convertedBbox = [bbox[1], bbox[0], bbox[3], bbox[2]] // convert from [minX, minY, maxX, maxY] to [south, west, north, east]
-    const queryBody = `[out:json][timeout:60][bbox:${convertedBbox.join(",")}];${query};out center;`
-
-    const overpassHosts = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.private.coffee/api/interpreter",
-    ]
-
-    const maxRetries = 3
-    const baseDelay = 1000
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      for (const host of overpassHosts) {
-        try {
-          const response = await fetch(host, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: `data=${encodeURIComponent(queryBody)}`,
-          })
-
-          if (response.ok) {
-            const data: OverpassResponse = await response.json()
-            return data
-          }
-        } catch (error) {
-          // Try next host
-          console.warn(`Overpass API request failed on host ${host}:`, error)
-        }
-      }
-
-      if (attempt < maxRetries - 1) {
-        const delay = baseDelay * Math.pow(2, attempt)
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-
-    throw new Error("Failed to query Overpass API after retries")
-  }
 }
 
-export const overpassPoiProvider = new OverpassPoiProvider(sessionStorageCache)
+export const overpassClient = new OverpassClient(indexedDBCache)
+export const overpassPoiProvider = new OverpassPoiProvider(overpassClient)
