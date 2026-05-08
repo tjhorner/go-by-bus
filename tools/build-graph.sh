@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir -p data static/tiles
+
 echo "Downloading OSM data for Washington state..."
 wget -O data/washington-latest.osm.pbf https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf
 
@@ -25,3 +27,6 @@ rm data/washington-latest.osm.pbf data/bbox.osm.pbf data/has_highway.osm.pbf
 
 echo "Building GeoJSON tiles..."
 uv run python tools/build_tiles.py data/roads.osm.pbf static/tiles/
+
+echo "Cleaning up OSM data file..."
+rm data/roads.osm.pbf
