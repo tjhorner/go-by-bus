@@ -37,7 +37,13 @@
 
     <p>
       When you select a route, this website will look up places to visit that are a quick walk or
-      roll from the stops along it.
+      roll from the stops along it. The shaded areas on the map are <a
+        href="https://en.wikipedia.org/wiki/Isochrone_map"
+        target="_blank"
+        rel="noopener noreferrer">isochrones</a
+      > which show how far you can get from a stop in a given amount of time based on the actual transportation
+      infrastructure. This is 15 minutes by default, but you can change this depending on how long you're
+      willing to travel.
     </p>
 
     <p>
