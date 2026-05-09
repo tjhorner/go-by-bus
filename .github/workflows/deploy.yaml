@@ -35,10 +35,10 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install
 
-      - name: Get latest Washington PBF version
+      - name: Get latest Washington PBF version hash
         id: get-pbf-url
         run: |
-          PBF_HASH=(curl -I -s -o /dev/null -w '%header{location}' https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf | sha256)
+          PBF_HASH=$(curl -I -s -o /dev/null -w '%header{location}' https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf | sha256sum | cut -d' ' -f1)
           echo "pbf-hash=$PBF_HASH" >> $GITHUB_OUTPUT
 
       - name: Cache GeoJSON tiles
