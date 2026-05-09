@@ -11,9 +11,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install xmllint
-        run: sudo apt install -y osmium-tool
-
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -38,7 +35,21 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install
 
+      - name: Get latest Washington PBF version
+        id: get-pbf-url
+        run: |
+          PBF_HASH=(curl -I -s -o /dev/null -w '%header{location}' https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf | sha256)
+          echo "pbf-hash=$PBF_HASH" >> $GITHUB_OUTPUT
+
+      - name: Cache GeoJSON tiles
+        id: cache-tiles
+        uses: actions/cache@v5
+        with:
+          path: static/tiles
+          key: tiles-${{ steps.get-pbf-url.outputs.pbf-hash }}
+
       - name: Build routing tiles
+        if: steps.cache-tiles.outputs.cache-hit != 'true'
         run: ./tools/build-graph.sh
 
       - name: build

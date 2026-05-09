@@ -6,6 +6,7 @@ import gzip
 import json
 import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import mercantile
@@ -35,16 +36,17 @@ EXCLUDE_HIGHWAY_TYPES = {"motorway", "motorway_link", "trunk", "trunk_link"}
 
 
 class WalkingWayHandler(osmium.SimpleHandler):
-    def __init__(self):
+    def __init__(self, bbox: sgeom.Polygon | None = None):
         super().__init__()
         self.ways: list[dict] = []
+        self._bbox = bbox
 
     def way(self, w):
         tags = {t.k: t.v for t in w.tags}
         highway = tags.get("highway", "")
         if not highway or highway in EXCLUDE_HIGHWAY_TYPES:
             return
-        if tags.get("foot") == "no" or tags.get("access") == "no":
+        if tags.get("foot") == "no" or tags.get("access") in ("no", "private"):
             return
         if highway not in WALKING_HIGHWAY_TYPES:
             return
@@ -52,6 +54,10 @@ class WalkingWayHandler(osmium.SimpleHandler):
         coords = [(n.lon, n.lat) for n in w.nodes if n.location.valid()]
         if len(coords) < 2:
             return
+
+        if self._bbox is not None:
+            if not self._bbox.intersects(sgeom.LineString(coords)):
+                return
 
         self.ways.append(
             {
@@ -100,8 +106,8 @@ def split_at_junctions(ways: list[dict]) -> list[dict]:
     return edges
 
 
-def load_network(pbf_path: str) -> list[dict]:
-    handler = WalkingWayHandler()
+def load_network(pbf_path: str, bbox: sgeom.Polygon | None = None) -> list[dict]:
+    handler = WalkingWayHandler(bbox)
     handler.apply_file(pbf_path, locations=True)
     return split_at_junctions(handler.ways)
 
@@ -145,6 +151,20 @@ def features_in_tile(edges: list[dict], tree: STRtree, tile) -> list[dict]:
     return features
 
 
+def process_tile(
+    edges: list[dict],
+    tree: STRtree,
+    tile,
+    out_dir: Path,
+    gzip_file: bool,
+) -> bool:
+    features = features_in_tile(edges, tree, tile)
+    if not features:
+        return False
+    write_tile(out_dir, gzip_file, tile, features)
+    return True
+
+
 def write_tile(out_dir: Path, gzip_file: bool, tile, features: list[dict]) -> None:
     file_name = f"{tile.y}.geojson"
     if gzip_file:
@@ -172,10 +192,20 @@ def main() -> int:
         action="store_true",
         help="Whether to gzip the output GeoJSON files",
     )
+    parser.add_argument(
+        "--bbox",
+        metavar="W,S,E,N",
+        help="Clip to bounding box (west,south,east,north)",
+    )
     args = parser.parse_args()
 
+    bbox = None
+    if args.bbox:
+        w, s, e, n = map(float, args.bbox.split(","))
+        bbox = sgeom.box(w, s, e, n)
+
     print(f"Reading {args.input_pbf}...", file=sys.stderr)
-    edges = load_network(str(args.input_pbf))
+    edges = load_network(str(args.input_pbf), bbox)
 
     if not edges:
         print(
@@ -193,14 +223,16 @@ def main() -> int:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     written = 0
-    for tile in tiles:
-        features = features_in_tile(edges, tree, tile)
-        if not features:
-            continue
-        write_tile(args.output_dir, args.gzip, tile, features)
-        written += 1
-        if written % 25 == 0:
-            print(f"  ...{written} tiles written", file=sys.stderr)
+    with ThreadPoolExecutor() as pool:
+        futures = {
+            pool.submit(process_tile, edges, tree, t, args.output_dir, args.gzip): t
+            for t in tiles
+        }
+        for i, future in enumerate(as_completed(futures), 1):
+            if future.result():
+                written += 1
+            if i % 25 == 0:
+                print(f"  ...{i}/{len(tiles)} tiles processed", file=sys.stderr)
 
     manifest = {
         "zoom": args.zoom,
